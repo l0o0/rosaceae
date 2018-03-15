@@ -11,74 +11,71 @@ import numpy as np
 import pandas as pd
 
 
+def bin_frequency(xarray, bins=5):
+    '''Data discretization by the same frequency.
+    Data are binned by the same frequency. Frequency is controlled by bins
+    number, frequency = (total length of xarray) / (bins number) .
 
-def bin_var(xarray, border=None):
+    Args:
+        xarray: Pandas.Series or Numpy.array type data.
+        bins: int, bins number.
     '''
-    -xarray : a numpy array
-    -border : a border list
-    '''
-    # 创建8个分区间
-    if not border:
-        des = xarray.describe()
-        print des
-        if des['75%'] < 7:
-            step = (des['75%']-des['25%'])/3
-        else:
-            step = des['std']/2
-            step = int(step)
-        step = np.round(step, 3)
-        border = [des['50%']+(i-3)*step for i in range(6)]
-        border = [i for i in border if i >=0]
-        #print 'old border: %s' % border
-        if len(border) != 6:
-            added = [border[-1]+ i*step for i in range(1,6-len(border))]
-            border.extend(added)
-        print 'border:%s, step: %s' % (border, step)
-    else:
-        print 'border:%s, step: Set' % (border, )
+
+    xarray_sorted = sorted(xarray)
+    step = len(xarray) / bins
+
     out = {}
-    for i, j in enumerate(border):
-        if i == 0:
-            k = '-inf,%s' % j
-            tmp = np.where(np.logical_and(xarray>=0, xarray<j))[0]
-        else:
-            k = '%s,%s' % (border[i-1],j)
-            tmp = np.where(np.logical_and(xarray>=border[i-1], xarray<border[i]))[0]
-        out[k] = tmp
-        print i,j, k
-    out['%s,inf' % j] = np.where(xarray>=border[-1])[0]
+    for i in range(bins):
+        left = xarray_sorted[i*step]
+        right = xarray_sorted[(i+1)*step]
+        key = "%s,%s" % (left, right)
+        out[key] = np.where(np.logical_and(xarray>=left, xarray<right))[0]
 
     return out
 
 
-# 根据数据的分位值来分箱
-def bin_quantile(xarray, border=None):
-    if len(xarray.unique()) < 7:
-        border = xarray.unique().tolist()
-        border.sort()
-    else:
-        border = [np.percentile(xarray, 0.05),
-                  np.percentile(xarray, 0.2), np.percentile(xarray, 0.5),
-                  np.percentile(xarray, 0.8), np.percentile(xarray, 0.95),
-                ]
-    #print border
+def bin_distance(xarray, bins=5):
+    '''Data discretization in the same distance.
+    Data are binned by the same distance, the distance is controlled by max
+    interval and bins number. Max interval = max(xarray) - min(xarray),
+    distance = (max interval) / (bins number).
+
+    Args:
+        xarray: Pandas.Series or Numpy.array type data.
+        bins: int, bins number.
+    '''
+    distance = (max(xarray) - min(xarray)) / bins
+    MIN = min(xarray)
 
     out = {}
-    for i, j in enumerate(border):
-        if i == 0:
-            k = '-inf,%s' % j
-            tmp = np.where(np.logical_and(xarray>=0, xarray<j))[0]
-        else:
-            k = '%s,%s' % (border[i-1],j)
-            tmp = np.where(np.logical_and(xarray>=border[i-1], xarray<border[i]))[0]
-        out[k] = tmp
-    out['%s,inf' % j] = np.where(xarray>=border[-1])[0]
+    for i in range(bins):
+        left = MIN + i * distance
+        right = MIN + (i+1) * distance
+        key = "%s,%s" % (left, right)
+        out[key] = np.where(np.logical_and(xarray>=left, xarray<right))[0]
+
     return out
 
+
+def bin_custom(xarray, border):
+    '''Binning data by customize boundary.
+
+    Args:
+        xarray : a numpy array.
+        border : a border list.
+    '''
+    out = {}
+
+    for i, j in enumerate(border):
+        k = '%s,%s' % (border[i-1],j)
+        tmp = np.where(np.logical_and(xarray>=border[i-1], xarray<border[i]))[0]
+        out[k] = tmp
+
+    return out
 
 
 def bin_scatter(xarray, border = None):
-    '''
+    '''Binning discretization data.
     '''
     out = {}
     if not border:
