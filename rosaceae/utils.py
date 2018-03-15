@@ -7,6 +7,8 @@ This module provides utility functions that are used within Rosaceae.
 Including visulization and summary functions.
 """
 
+
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 from itertools import combinations
@@ -66,10 +68,57 @@ def woe_plot(fea_woe):
     return p
 
 
+def score_ks_plot(score, label, bad=1, good=0):
+    label = list(label)
+    items = sorted(zip(score, label), key=lambda x:x[0])
+    total_good = float(label.count(good))
+    total_bad = float(label.count(bad))
+
+    step = len(score) / 100
+
+    good_list = []
+    bad_list = []
+    score_ticks = []
+
+    max_dist = (0,0)
+    for i in range(1, 101):
+        idx = i*step
+        score_ticks.append(items[idx][0])
+        tmp_label = [x[1] for x in items[0:i*step]]
+        good_rate = tmp_label.count(good) / total_good
+        bad_rate = tmp_label.count(bad) / total_bad
+
+        if abs(good_rate - bad_rate) > max_dist[0]:
+            max_dist = (abs(good_rate - bad_rate), i)
+
+        good_list.append(good_rate)
+        bad_list.append(bad_rate)
+
+    ks_good = good_list[max_dist[1]]
+    ks_bad = bad_list[max_dist[1]]
+    ks_score = score_ticks[max_dist[1]]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(score_ticks, good_list, color='green', linewidth=1,
+            label='Cumulative percentages of good')
+    ax.plot(score_ticks, bad_list, color='red', linewidth=1,
+            label='Cumulative percentages of bad')
+    ax.plot([ks_score, ks_score], [ks_good, ks_bad],
+            linewidth=1, linestyle='dashed', marker='o', label='KS')
+    ax.annotate('(%.2f, %.2f%%, %.2f%%)\nKS=%.2f' % (ks_score,
+                                                    ks_good*100,
+                                                    ks_bad*100,
+                                                    max_dist[0]),
+                xy=(ks_score, ks_good-0.1), xytext=(ks_score+5, ks_good-0.1))
+    ax.legend(bbox_to_anchor=(0, -0.5),ncol=1, loc=3)
+    ax.set_xlabel('Score')
+    return ax
+
 #####################################################################
 # summary function
 #####################################################################
-# TODO: feature importance and IV 
+# TODO: feature importance and IV
 
 def frequent_table(xarray, label, steps):
     cols = ['Bins', 'Percent', 'Cumulative_percent', 'Counts', 'Cumulative_Counts']
@@ -98,3 +147,17 @@ def frequent_table(xarray, label, steps):
 
         fre_df.loc[i] = row
     return fre_df
+
+
+def woe_table(feature_woe, coef, slope):
+    table = pd.DataFrame(columns=['Feature', 'Bin', 'WOE', 'Score'])
+    for f in coef.index:
+        tmp_woe = feature_woe[f]
+        bins = tmp_woe.keys()
+        bins = sorted(bins,
+                    key=lambda x : pd.to_numeric(str(x).split(','))[0])
+        for b in bins:
+            value = slope * coef[f] * tmp_woe[b]
+            row_idx = 0 if pd.isna(table.index.max()) else table.index.max()+1
+            table.loc[row_idx] = [f, b, tmp_woe[b], value]
+    return table
