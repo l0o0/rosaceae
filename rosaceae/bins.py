@@ -6,9 +6,11 @@ rosaceae.bin
 This module implements data binning.
 """
 
+from __future__ import print_function
 
 import numpy as np
 import pandas as pd
+from sklearn.tree import DecisionTreeClassifier
 
 
 def bin_frequency(xarray, bins=5):
@@ -84,3 +86,59 @@ def bin_scatter(xarray, border = None):
     for i in border:
         out[i] = np.where(xarray == i)[0]
     return out
+
+
+def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
+    '''Binning data according DecisionTree node.
+
+    Args:
+        xarray: input feature value, array like, shape = [n_samples] or
+                [n_samples, 1]
+        y: the target value, array like, shape = [n_samples] or 
+            [n_samples, n_output]
+        **kwargs: keyword arguments for sklearn DecisionTree.
+    '''
+    n_samples = xarray.shape[0]
+    #print n_samples
+    clf = DecisionTreeClassifier(random_state=0, 
+                                criterion='entropy',
+                                min_samples_split=0.2,
+                                max_leaf_nodes=6, 
+                                min_impurity_decrease=0.001,
+                                **kwargs)
+                                  
+    if len(xarray.shape) == 1:                                
+        xarray = xarray.values.reshape(n_samples, 1)
+
+    if na_omit:
+        y = y[~pd.isna(xarray)]
+        xarray.dropna(inplace=True)
+        
+
+    #print xarray.shape
+    clf.fit(xarray, y)                                
+    children_left = clf.tree_.children_left
+    children_right = clf.tree_.children_right
+    threshold = clf.tree_.threshold
+    nodes_info = clf.tree_.__getstate__()['nodes']
+    small_nodes = [i for i,j in enumerate(nodes_info) 
+                    if j[-2] < n_samples * min_samples_node]
+    #print small_nodes
+    # find leaf node in tree and get threshold in the leaf
+    breaks = []
+    #print threshold
+    for i,(l,r) in enumerate(zip(children_left, children_right)):
+        if l != r and l not in small_nodes and r not in small_nodes:
+            breaks.append(threshold[i])
+    breaks.sort()
+    breaks = [-np.inf] + breaks + [np.inf]
+    #print(breaks)
+    out = {}
+    for i, b in enumerate(breaks[1:]):
+        start = breaks[i]
+        end = b
+        key = "%s:%s" % (start, end)
+        out[key] = np.where((xarray >= start) & (xarray < end))[0]
+
+    return out
+
