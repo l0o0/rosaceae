@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 def readme():
@@ -12,8 +12,8 @@ setup(
     long_description=readme(),
     author='l0o0',
     author_email='linxzh1989@gmail.com',
-    license='MIT',
-    keywords=['scorecards', 'woe'],
+    keywords=['scorecards', 'woe', 'iv'],
     url='',
-    install_requires=['numpy', 'pandas', 'seaborn']
+    install_requires=['numpy', 'pandas', 'seaborn'],
+    packages=find_packages()
 )
