@@ -7,7 +7,7 @@ def readme():
 
 setup(
     name='rosaceae',
-    version='0.0.1',
+    version='0.0.2',
     description='Python pacakge for credit risk scorecards',
     long_description=readme(),
     author='l0o0',
