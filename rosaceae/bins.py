@@ -98,6 +98,8 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
             [n_samples, n_output]
         **kwargs: keyword arguments for sklearn DecisionTree.
     '''
+    if len(set(xarray)) < 5:
+        print('Input data is continous?')
     n_samples = xarray.shape[0]
     #print n_samples
     clf = DecisionTreeClassifier(random_state=0, 
@@ -108,14 +110,14 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
                                 **kwargs)
                                   
     if len(xarray.shape) == 1:                                
-        xarray = xarray.values.reshape(n_samples, 1)
+        xarray = pd.DataFrame(xarray.values.reshape(n_samples, 1))
 
-    if na_omit:
-        y = y[~pd.isna(xarray)]
-        xarray.dropna(inplace=True)
-        
-
-    #print xarray.shape
+    if not na_omit:
+        na_where = np.where(pd.isna(xarray.iloc[:,0]))[0]
+    
+    y = y[~pd.isna(xarray.iloc[:,0])]
+    xarray.dropna(inplace=True)
+                
     clf.fit(xarray, y)                                
     children_left = clf.tree_.children_left
     children_right = clf.tree_.children_right
@@ -123,22 +125,24 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
     nodes_info = clf.tree_.__getstate__()['nodes']
     small_nodes = [i for i,j in enumerate(nodes_info) 
                     if j[-2] < n_samples * min_samples_node]
-    #print small_nodes
+
     # find leaf node in tree and get threshold in the leaf
     breaks = []
-    #print threshold
+
     for i,(l,r) in enumerate(zip(children_left, children_right)):
         if l != r and l not in small_nodes and r not in small_nodes:
             breaks.append(threshold[i])
     breaks.sort()
     breaks = [-np.inf] + breaks + [np.inf]
-    #print(breaks)
+
     out = {}
     for i, b in enumerate(breaks[1:]):
         start = breaks[i]
         end = b
         key = "%s:%s" % (start, end)
         out[key] = np.where((xarray >= start) & (xarray < end))[0]
-
+    
+    if not na_omit and len(na_where) > 0:
+        out['NA'] = na_where
+    
     return out
-
