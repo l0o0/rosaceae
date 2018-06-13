@@ -7,6 +7,7 @@ This module provides functions for credit risk scorecard.
 '''
 from __future__ import print_function
 import pandas as pd
+import numpy as np
 
 from math import log, e
 
@@ -114,7 +115,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
         raise TypeError("dt argument is a list contains 0 and 1, \
                     whose length equals variable's length.")
 
-    info_df = pd.DataFrame(columns=['Variables', 'Bin', 'Good', 'Bad', 'pnt_%s'% good_label, 
+    info_df = pd.DataFrame(columns=['Variable', 'Bin', 'Good', 'Bad', 'pnt_%s'% good_label, 
                             'pnt_%s' % bad_label, 'WOE', 'IV_i'])
 
     for idx, var in enumerate(vars):
@@ -136,7 +137,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
         #print(bins_out.keys())
         if verbose:
             print("total_good: %s\ttotal_bad: %s\n" % (total_good, total_bad))
-            print("Variables\tBin\tGood(%)\tBad(%)\twoe_i\tiv_i") 
+            print("Variable\tBin\tGood(%)\tBad(%)\tWOE_i\tIV_i") 
         
         for border in bins_out:
             border_good = float(sum(data[y][bins_out[border]]==good_label)) 
@@ -154,8 +155,8 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
             info_df.loc[info_df.shape[0], :] = row
             if verbose:
                 print('\t'.join([str(_i) for _i in row]))
-    iv = info_df.groupby('Variables').iv_i.sum()
-    info_df['IV'] = info_df['Variables'].map(lambda x:iv[x])
+    iv = info_df.groupby('Variable').IV_i.sum()
+    info_df['IV'] = info_df['Variable'].map(lambda x:iv[x])
     return info_df
 
 
