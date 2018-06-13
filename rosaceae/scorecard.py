@@ -14,7 +14,7 @@ from .bins import bin_tree, bin_scatter
 
 
 # raw value transfer to woe value according woe table
-def woe_replace(woes, data):
+def replaceWOE(woes, data):
     '''Use woe value to replace original value.
     Args:
         -woe : woe value dictionary or pandas data frame.
@@ -41,8 +41,11 @@ def woe_replace(woes, data):
     for var in woes:
         var_woe = woes[var]
         for border in var_woe:
-            start, end = pd.to_numeric(border.split(':'))
-            flags = ((woe_data[var]>= start) & (woe_data[var]<end))
+            if isinstance(border, str) and ':' in border:
+                start, end = pd.to_numeric(border.split(':'))
+                flags = ((woe_data[var]>= start) & (woe_data[var]<end))
+            else:
+                flags = woe_data[var] == border
             woe_data.loc[flags, var] = var_woe[border][0]
     return woe_data
 
@@ -112,7 +115,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
                     whose length equals variable's length.")
 
     info_df = pd.DataFrame(columns=['Variables', 'Bin', 'Good', 'Bad', 'pnt_%s'% good_label, 
-                            'pnt_%s' % bad_label, 'woe', 'iv_i'])
+                            'pnt_%s' % bad_label, 'WOE', 'IV_i'])
 
     for idx, var in enumerate(vars):
         if verbose:
@@ -129,7 +132,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
             bins_out = bin_tree(data[var], data[y], na_omit=na_omit, min_samples_node= min_samples_node, **kwargs)
         elif dt[idx] == 1:
             bins_out = bin_scatter(data[var])
-            
+
         #print(bins_out.keys())
         if verbose:
             print("total_good: %s\ttotal_bad: %s\n" % (total_good, total_bad))
@@ -152,7 +155,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
             if verbose:
                 print('\t'.join([str(_i) for _i in row]))
     iv = info_df.groupby('Variables').iv_i.sum()
-    info_df['iv'] = info_df['Variables'].map(lambda x:iv[x])
+    info_df['IV'] = info_df['Variables'].map(lambda x:iv[x])
     return info_df
 
 
@@ -160,7 +163,7 @@ def getConstant(theta, pdo, basescore, data, woe_table, verbose=False):
     '''Calculata Shift and Slope
     The score of an individual i is given by the formula:
 
-        Score(i) = Shift + Slope*(b0 + b1*WOE1(i) + b2*WOE2(i)+ ... +bp*WOEp(i))
+        Score(i) = A - B*(b0 + b1*WOE1(i) + b2*WOE2(i)+ ... +bp*WOEp(i))
 
     where bj is the coefficient of the j-th variable in the model,
     and WOEj(i) is the Weight of Evidence (WOE) value for the
@@ -168,10 +171,10 @@ def getConstant(theta, pdo, basescore, data, woe_table, verbose=False):
 
     In short formula:
 
-        Score = Shift + Slope*ln(Good/Bad)
-        Score + PDO = Shift + Slope*ln(2* Good/Bad)
+        Score = A + B*ln(Good/Bad)
+        Score + PDO = A + B*ln(2* Good/Bad)
 
-    where Slope = PDO / ln(2), Shift = Score - Slope*ln(Good/Bad).
+    where B = PDO / ln(2), A = Score - B*ln(Good/Bad).
 
     Args:
         theta: the ratio of Good/Bad. Let good ratio is p, then bad ratio is
@@ -179,29 +182,65 @@ def getConstant(theta, pdo, basescore, data, woe_table, verbose=False):
         pdo: Point-to-Double Odds. When the odds is doubled, score will increate pdo.
         basescore: When the ratio of Good/Bad is theta, the score is basescore.
     '''
-    slope = pdo/log(2, e)
-    shift = basescore - slope * log(float(theta), e)
+    B = pdo/log(2, e)
+    A = basescore - slope * log(float(theta), e)
     if verbose:
-        print("Shift is %s, slope is %s" % (shift, slope))
-    return (shift, slope)
-
-def getScoreCard(woe_table):
+        print("A is %s, B is %s" % (shift, slope))
+    return (A, B)
 
 
-def getScore(woe_table, xarray, missing=0):
-    score = 0
-    xarray.fillna(0, inplace=True)
-    for idx in xarray.index:
-        value = xarray[idx]
+def getScoreCard(woe_table, coef, inter, A, B):
+    '''Contruct a score card table.
+    According formula:
+
+        Score(i) = A - B*(b0 + b1*WOE1(i) + b2*WOE2(i)+ ... +bp*WOEp(i))
+    
+    A, B is needed for get score.
+
+    Args:
+        woe_table:
+        coef: dictionary, coefficient of the variables in the logistic regression, variable as key.
+        inter: interception of logistic regression.
+        A: compensation points.
+        B: scale.
+    '''
+    scores = []
+    for i, row in woe_table.iterrows():
+        woe = row['WOE']
+        var = row['Variable']
+        if var not in coef:
+            score = '--'
+        else:
+            score = - B * coef[var] * woe
+        scores.append(score)
+    basescore = A - B * inter
+    scorecard = woe_table.copy()
+    scorecard['Score'] = scores
+    scorecard.loc[scorecard.shape[0]] = ['basescore', basescore] + ['--'] * 8
+    return scorecard
+
         
-        if pd.isna(value):
-            score += missing
-            continue
+# Get case score
+def getScore(data, scorecard, na_value=None):
+    '''Calculate total score for case.
+    Args:
+        data: input data frame, variables as columns name.
+        scorecard: output of  function getScoreCard.
+        na_value: value for NaN, default is None.
+    '''
+    # remove empty score row
+    scorecard = scorecard[~(scorecard['Score'] == '--')]
+    tmpdata = pd.DataFrame(0, columns=scorecard['Variable'].unique(), 
+            index=np.arange(data.shape[0]))
+    for i, row in scorecard.iterrows():
+        score = row['Score']
+        border = row['Bin']
+        var = row['Variable']
 
-        tmp_woe = woe_table.loc[woe_table['Feature'] == idx, :]
-        for k in tmp_woe['Bin']:
-            border = pd.to_numeric(k.split(':'))
-            if value >= border[0] and value < border[1]:
-                score += tmp_woe.loc[tmp_woe['Bin']==k, 'Score'].values[0]
-                break
-    return score
+        if isinstance(border, str) and ':' in border:
+            start, end = pd.to_numeric(border.split(':'))
+            flags = ((data[var]>= start) & (data[var]<end))
+        else:
+            flags = data[var] == border
+        tmpdata.loc[flags, var] = score
+    return tmpdata.apply(sum, axis=1)
