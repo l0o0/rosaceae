@@ -42,10 +42,35 @@ def model_selecter(x_train, x_test, y_train, y_test, start=1, end=None, verbose=
                 print("%s\t%s\t%s\t%s" % (n, ','.join(t), train_roc_score, test_roc_score))
 
             row = 0 if pd.isna(result_df.index.max()) else result_df.index.max() + 1
-            result_df.loc[row] = [n, ','.join(t), train_roc_score, test_roc_score, clf.coef_, clf.intercept_]
+            result_df.loc[row] = [n, ','.join(t), train_roc_score, test_roc_score, clf.coef_[0], clf.intercept_[0]]
 
     return result_df
-    
+
+
+# Use cross validation to evaluate models.
+def model_selecter2(x, y, start=1, end=None, verbose=False):
+    result_df = pd.DataFrame(columns=['Var_No', 'Vars', 'score', 'std'])
+    if not end:
+        end = x.shape[1]
+    cols = x.columns
+    for n in range(start, end+1):
+        cols_try = combinations(cols, n)
+
+        if not verbose:
+            print(n)
+
+        for t in cols_try:
+            tmp = x.loc[:, x.columns.isin(t)]
+            cv = StratifiedKFold(n_splits=10, shuffle=True)
+            clf = LogisticRegression(random_state=0)
+            scores = cross_val_score(clf, tmp, y)
+            if verbose:
+                print("%s\t%s\t%s\t%s" % (n, ','.join(t), scores.mean(), scores.std()))
+
+            #row = 0 if pd.isna(result_df.index.max()) else result_df.index.max() + 1
+            result_df.loc[result_df.shape[0]] = [n, ','.join(t), scores.mean(), scores.std()]
+
+    return result_df
 
 #####################################################################
 # visulization function
@@ -78,7 +103,7 @@ def score_ks_plot(score, label, bad=1, good=0):
     total_good = float(label.count(good))
     total_bad = float(label.count(bad))
 
-    step = len(score) / 100
+    step = int(len(score) / 100)
 
     good_list = []
     bad_list = []
@@ -87,6 +112,7 @@ def score_ks_plot(score, label, bad=1, good=0):
     max_dist = (0,0)
     for i in range(1, 101):
         idx = int(i*step)
+        #print(idx)
         score_ticks.append(items[idx][0])
         tmp_label = [x[1] for x in items[0:idx]]
         good_rate = tmp_label.count(good) / total_good
@@ -102,7 +128,8 @@ def score_ks_plot(score, label, bad=1, good=0):
     ks_bad = bad_list[max_dist[1]]
     ks_score = score_ticks[max_dist[1]]
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10,10))
+
     ax = fig.add_subplot(111)
     ax.plot(score_ticks, good_list, color='green', linewidth=1,
             label='Cumulative percentages of good')
@@ -114,8 +141,8 @@ def score_ks_plot(score, label, bad=1, good=0):
                                                     ks_good*100,
                                                     ks_bad*100,
                                                     max_dist[0]),
-                xy=(ks_score, ks_good-0.1), xytext=(ks_score+5, ks_good-0.1))
-    ax.legend(bbox_to_anchor=(0, -0.5),ncol=1, loc=3)
+                xy=(ks_score*1.1, ks_good*0.9))
+    ax.legend(bbox_to_anchor=(0, -0.15),ncol=1, loc=3)
     ax.set_xlabel('Score')
     return ax
 
