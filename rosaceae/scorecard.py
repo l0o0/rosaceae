@@ -51,41 +51,7 @@ def replaceWOE(woes, data):
     return woe_data
 
 
-
-# 计算 IV 值
-def iv(x, y, good_label=0, verbose=False):
-    '''Calculate feature iv value.
-    Args:
-        x: pandas series.
-        y: target value. 
-        bins_out: output of bins function.
-        good_label: label for good case.
-    '''
-    bins_out = bin_tree(x, y)
-    total_good = float(sum(y==good_label))
-    total_bad = y.shape[0] - total_good
-    if verbose:
-        print("total_good: %s\ttotal_bad: %s\n" % (total_good, total_bad))
-        print("Features\tBin\tGood(%)\tBad(%)\twoe_i\tiv_i") 
-    iv = 0
-    for border in bins_out:
-        border_good = float(sum(y[bins_out[border]]==good_label)) 
-        border_bad = len(bins_out[border]) - border_good
-        border_woe = log((border_bad/total_bad)/(border_good/total_good))
-        iv_i = (border_bad/total_bad - border_good/total_good) * border_woe
-        if verbose:
-            print("%s\t%s\t%s\t%s\t%s\t%s" % (
-                    x.name,
-                    border,
-                    border_good/total_good * 100, 
-                    border_bad/total_bad * 100,
-                    border_woe, 
-                    iv_i))
-        iv += iv_i
-    return iv
-
-
-# 计算 IV 值
+# information value
 def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_omit=True, 
            verbose=False, **kwargs):
     '''Calculate feature iv value.
@@ -217,7 +183,7 @@ def getScoreCard(woe_table, coef, inter, A, B):
     basescore = A - B * inter
     scorecard = woe_table.copy()
     scorecard['Score'] = scores
-    scorecard.loc[scorecard.shape[0]] = ['basescore', basescore] + ['--'] * 8
+    scorecard.loc[scorecard.shape[0]] = ['basescore'] + ['--'] * (scorecard.shape[1]-2) + [basescore]
     return scorecard
 
         
@@ -230,18 +196,19 @@ def getScore(data, scorecard, na_value=None):
         na_value: value for NaN, default is None.
     '''
     # remove empty score row
-    scorecard = scorecard[~(scorecard['Score'] == '--')]
+    basescore = scorecard.loc[scorecard['Variable'] == 'basescore', 'Score'].astype('float').round(0)
     tmpdata = pd.DataFrame(0, columns=scorecard['Variable'].unique(), 
             index=np.arange(data.shape[0]))
     for i, row in scorecard.iterrows():
         score = row['Score']
         border = row['Bin']
         var = row['Variable']
-
+        if var == 'basescore' or score == '--':
+            continue
         if isinstance(border, str) and ':' in border:
             start, end = pd.to_numeric(border.split(':'))
             flags = ((data[var]>= start) & (data[var]<end))
         else:
             flags = data[var] == border
         tmpdata.loc[flags, var] = score
-    return tmpdata.apply(sum, axis=1)
+    return tmpdata.apply(sum, axis=1) + basescore
