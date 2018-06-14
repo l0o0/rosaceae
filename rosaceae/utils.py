@@ -153,10 +153,11 @@ def score_ks_plot(score, label, bad=1, good=0):
 
 def frequent_table(xarray, label, steps):
     cols = ['Bins', 'Percent', 'Cumulative_percent', 'Counts', 'Cumulative_Counts']
+    if len(set(label)) != 2:
+        raise ValueError('label should be binary value.')
     cols.extend(list(set(label)))   # column names
     cols.append("%s/%s" % (cols[-1], cols[3]))
     fre_df = pd.DataFrame(columns=cols)
-
     total_length = float(len(xarray))
     sum_length = 0
 
