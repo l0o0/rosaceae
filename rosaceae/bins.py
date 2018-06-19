@@ -78,6 +78,18 @@ def bin_custom(xarray, border):
 
 def bin_scatter(xarray, border = None):
     '''Binning discretization data.
+
+    Parameteres
+    -----------
+    xarray : array like
+        Input discretization data array. Data value is not continous numberic.
+    border : array like
+        Unfinished
+    
+    Returns
+    -------
+    Dictionary
+        Category as key names. Corresponding row index list as values.
     '''
     out = {}
     if not border:
@@ -91,12 +103,21 @@ def bin_scatter(xarray, border = None):
 def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
     '''Binning data according DecisionTree node.
 
-    Args:
-        xarray: input feature value, array like, shape = [n_samples] or
-                [n_samples, 1]
-        y: the target value, array like, shape = [n_samples] or 
-            [n_samples, n_output]
-        **kwargs: keyword arguments for sklearn DecisionTree.
+    Parameters
+    ----------
+    xarray : array like or ndarray
+        Input feature value, array like, shape = [n_samples] or
+        [n_samples, 1]
+    y : array like
+        The target value, array like, shape = [n_samples] or 
+        [n_samples, n_output]
+    **kwargs : **kwargs
+        Keyword arguments for sklearn DecisionTree.
+    
+    Returns
+    -------
+    Dictionary
+        Bin interval as key names. Corresponding row index list as values.
     '''
     if len(set(xarray)) < 5:
         print('Input data is continous?')
