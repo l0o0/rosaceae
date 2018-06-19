@@ -5,6 +5,7 @@ rosaceae.scorecard
 
 This module provides functions for credit risk scorecard.
 '''
+
 from __future__ import print_function
 import pandas as pd
 import numpy as np
@@ -16,10 +17,19 @@ from .bins import bin_tree, bin_scatter
 
 # raw value transfer to woe value according woe table
 def replaceWOE(woes, data):
-    '''Use woe value to replace original value.
-    Args:
-        -woe : woe value dictionary or pandas data frame.
-        -data : raw data used to replace with woe value.
+    '''Use WOE value to replace original value.
+
+    Parameters
+    ----------
+    woe : dictionary or pandas.DataFrame
+        WOE value dictionary or pandas data frame.
+    data : pandas.DataFrame
+        Raw data used to replace with WOE value.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A data frame is returned which has the sample shape with input data frame.
     '''
     if isinstance(woes, dict):
         cols = woes.keys()
@@ -51,20 +61,33 @@ def replaceWOE(woes, data):
     return woe_data
 
 
-# information value
+# information value and WOE
 def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_omit=True, 
            verbose=False, **kwargs):
     '''Calculate feature iv value.
-    Args:
-        data: pandas data frame.
-        y: target value column name. 
-        vars: variables, list like.
-        good_label: label for good case, default is 0.
-        dt: list like contains 0 and 1, the length is the same as the number of variables. 0 
-        indicates numberic data, 1 indicates category data.
-        na_omit: remove NAN value, default is True.
-        verbose: print verbose information.
-    Returns:
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        A data frame contians target label and features as columns.
+    y : str
+        Target or label column name.
+    vars : list or array like
+        A list contains column name, these columns can be viewd as  independent variables 
+        or interested features. If `vars` is None, All columns are regarded as features except `y`.
+    good_label : str or int
+        Label for good case, default is 0.
+    dt : list or array like
+        The length is the same as the number of variables. 0 indicates numberic data, 
+        1 indicates category data. 
+    na_omit : bool
+        Whether to remove NAN value, default is True.
+    verbose : bool
+        Print verbose information, default is False
+
+    Returns
+    -------
+    pandas.DataFrame
         A pandas data frame is returned. Contains variable, bin, good/bad case number 
         and corresponding woe and iv value.
     '''
@@ -126,8 +149,9 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
     return info_df
 
 
-def getConstant(theta, pdo, basescore, data, woe_table, verbose=False):
+def getConstant(theta, pdo, verbose=False):
     '''Calculata Shift and Slope
+
     The score of an individual i is given by the formula:
 
         Score(i) = A - B*(b0 + b1*WOE1(i) + b2*WOE2(i)+ ... +bp*WOEp(i))
@@ -143,14 +167,25 @@ def getConstant(theta, pdo, basescore, data, woe_table, verbose=False):
 
     where B = PDO / ln(2), A = Score - B*ln(Good/Bad).
 
-    Args:
-        theta: the ratio of Good/Bad. Let good ratio is p, then bad ratio is
-            (1-p), theta = p/(1-p).
-        pdo: Point-to-Double Odds. When the odds is doubled, score will increate pdo.
-        basescore: When the ratio of Good/Bad is theta, the score is basescore.
+    Parameters
+    ----------
+    theta : float
+        the ratio of Good/Bad or Bad/Good. Let good ratio is p, then bad 
+        ratio is (1-p), theta = p/(1-p).
+    pdo : float or int 
+        Point-to-Double Odds. When the odds is doubled, score will 
+        increate pdo. 
+    verbose : bool
+        Print verbose information, default is False.
+
+    Returns
+    --------
+    tuple
+        A tuple contains A, B. A is regarded as basescore, B is scale factor.
+
     '''
     B = pdo/log(2, e)
-    A = basescore - slope * log(float(theta), e)
+    A = basescore - B * log(float(theta), e)
     if verbose:
         print("A is %s, B is %s" % (shift, slope))
     return (A, B)
@@ -158,18 +193,33 @@ def getConstant(theta, pdo, basescore, data, woe_table, verbose=False):
 
 def getScoreCard(woe_table, coef, inter, A, B):
     '''Contruct a score card table.
-    According formula:
+
+    According score card formula:
 
         Score(i) = A - B*(b0 + b1*WOE1(i) + b2*WOE2(i)+ ... +bp*WOEp(i))
     
     A, B is needed for get score.
 
-    Args:
-        woe_table:
-        coef: dictionary, coefficient of the variables in the logistic regression, variable as key.
-        inter: interception of logistic regression.
-        A: compensation points.
-        B: scale.
+    Parameters
+    ----------
+    woe_table: pandas.DataFrame
+        Output of function `woe_iv`.
+    coef : dictionary
+        Coefficient of the variables in the logistic regression, 
+        variable(features) as key.
+    inter : float 
+        Interception of logistic regression.
+    A : float
+        Compensation points, calculated from score card formula above.
+    B : float
+        Scale factor, calculated from score card formula above.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A score card data frame is returned. Each variable can get its own 
+        score value in different interval. WOE and IV is also calculated for 
+        each intervalu.
     '''
     scores = []
     for i, row in woe_table.iterrows():
@@ -190,10 +240,22 @@ def getScoreCard(woe_table, coef, inter, A, B):
 # Get case score
 def getScore(data, scorecard, na_value=None):
     '''Calculate total score for case.
-    Args:
-        data: input data frame, variables as columns name.
-        scorecard: output of  function getScoreCard.
-        na_value: value for NaN, default is None.
+
+    Parameteres
+    -----------
+    data : pandas.DataFrame
+        Input original data frame, variables as columns name.
+    scorecard : pandas.DataFrame 
+        Output of function `getScoreCard`.
+    na_value : float
+        Value for NaN, default is None.
+    
+    Returns
+    -------
+    pandas.Series
+        According score card data frame, each row's final score in data 
+        is calculated. Variables in data columns but not in score card 
+        data frame will be ignored.
     '''
     # remove empty score row
     basescore = scorecard.loc[scorecard['Variable'] == 'basescore', 'Score'].astype('float').round(0)
