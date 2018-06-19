@@ -19,8 +19,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 
 
-# 对模型变量进行遍历分析，将结果保存在DataFrame中
 def model_selecter(x_train, x_test, y_train, y_test, start=1, end=None, verbose=False):
+    '''
+    '''
     result_df = pd.DataFrame(columns=['Var_No', 'Vars', 'train_score', 'test_score','coef', 'inter'])
     if not end:
         end = x_train.shape[1]
@@ -77,6 +78,18 @@ def model_selecter2(x, y, start=1, end=None, verbose=False):
 #####################################################################
 
 def bin_plot(out):
+    '''Bar plot counts in each bin.
+
+    Parameters
+    ----------
+    out : dictionary
+        Bin interval as key names, row index of corresponding bin interval 
+        as values.
+    
+    Returns
+    -------
+    seaborn bar plot
+    '''
     df = pd.DataFrame([(k, len(out[k])) for k in sorted(out.keys(), key=lambda x:float(str(x).split(',')[0]))], columns=['Range', 'Number'])
     print(df)
     p = sns.barplot(x='Range', y='Number', data=df)
@@ -86,6 +99,17 @@ def bin_plot(out):
 
 # 对分箱计算的woe进行绘图
 def woe_plot(fea_woe):
+    '''Bar plot for woe value.
+
+    Parameters
+    ----------
+    fea_woe : dictionary
+        Bin interval as key names, corresponding WOE value as values.
+
+    Returns
+    -------
+    seaborn bar plot
+    ''' 
     for f in fea_woe:
         tmp = fea_woe[f].items()
         tmp = sorted(tmp, key=lambda x:pd.to_numeric(str(x[0]).split(',')[0]))
@@ -98,6 +122,23 @@ def woe_plot(fea_woe):
 
 
 def score_ks_plot(score, label, bad=1, good=0):
+    '''KS-plot
+
+    Parameters
+    ----------
+    score : list or array like
+        Final score value for each case.
+    label : list or array like
+        Label for indicating good or bad case.
+    bad : str or int
+        Bad case label, default is int 1.
+    good : str or int
+        Good case label, default is int 0.
+
+    Returns
+    -------
+    KS-plot is returned with max ks-score
+    '''
     label = list(label)
     items = sorted(zip(score, label), key=lambda x:x[0])
     total_good = float(label.count(good))
@@ -149,9 +190,26 @@ def score_ks_plot(score, label, bad=1, good=0):
 #####################################################################
 # summary function
 #####################################################################
-# TODO: feature importance and IV
 
-def frequent_table(xarray, label, steps):
+def frequency_table(xarray, label, steps):
+    '''Cases frequency table.   
+
+    Cut score into different interval and get.
+
+    Parameters
+    ----------
+    xarray : pandas.Series or numpy.array
+        A final score array from score card.
+    label : pandas.Series or numpy.array
+        A binary array to indicate good or bad cases.
+    steps : int list 
+        A int list to control the interval boundary
+
+    Returns
+    -------
+    pandas.DataFrame
+        A frequency table group by good or bad cases. See more detials in example code.
+    '''
     cols = ['Bins', 'Percent', 'Cumulative_percent', 'Counts', 'Cumulative_Counts']
     if len(set(label)) != 2:
         raise ValueError('label should be binary value.')
