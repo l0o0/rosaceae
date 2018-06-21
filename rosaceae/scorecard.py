@@ -37,7 +37,8 @@ def replaceWOE(woes, data):
         if sum(woes.columns.isin(['Variable', 'Bin', 'WOE'])) != 3:
             raise ValueError('DataFrame should contains Variable, Bin and WOE')
         tmp = {}
-        for i, row in woes.iteritems():
+        cols = woes['Variable'].unique()
+        for i, row in woes.iterrows():
             var = row['Variable']
             border = row['Bin']
             woe = row['WOE']
@@ -101,8 +102,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
         vars.remove(y)
 
     if dt == None or len(dt) != len(vars):
-        raise TypeError("dt argument is a list contains 0 and 1, \
-                    whose length equals variable's length.")
+        raise TypeError("dt argument is a list contains 0 and 1, whose length equals variable's length.")
 
     info_df = pd.DataFrame(columns=['Variable', 'Bin', 'Good', 'Bad', 'pnt_%s'% good_label, 
                             'pnt_%s' % bad_label, 'WOE', 'IV_i'])
