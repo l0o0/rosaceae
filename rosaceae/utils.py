@@ -17,6 +17,8 @@ from itertools import combinations
 from math import log
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import cross_val_score
 
 
 def model_selecter(x_train, x_test, y_train, y_test, start=1, end=None, verbose=False):
