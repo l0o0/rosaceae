@@ -119,8 +119,6 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
     Dictionary
         Bin interval as key names. Corresponding row index list as values.
     '''
-    if len(set(xarray)) < 5:
-        print('Input data is continous?')
     n_samples = xarray.shape[0]
     #print n_samples
     clf = DecisionTreeClassifier(random_state=0, 
