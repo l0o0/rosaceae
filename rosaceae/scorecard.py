@@ -228,8 +228,10 @@ def getScore(data, scorecard, na_value=None):
     '''
     # remove empty score row
     basescore = scorecard.loc[scorecard['Variable'] == 'basescore', 'Score'].astype('float').round(0)
+    # create empty data frame whose shape is [data.shape[0], target_variable counts]
     tmpdata = pd.DataFrame(0, columns=scorecard['Variable'].unique(), 
             index=np.arange(data.shape[0]))
+
     for i, row in scorecard.iterrows():
         score = row['Score']
         border = row['Bin']
@@ -239,6 +241,8 @@ def getScore(data, scorecard, na_value=None):
         if isinstance(border, str) and ':' in border:
             start, end = pd.to_numeric(border.split(':'))
             flags = ((data[var]>= start) & (data[var]<end))
+        elif border == 'NA':
+            flags = pd.isna(data[var])
         else:
             flags = data[var] == border
         tmpdata.loc[flags, var] = score
