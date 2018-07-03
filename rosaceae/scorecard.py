@@ -149,13 +149,13 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
     return info_df
 
 
-def getConstant(theta, pdo, verbose=False):
-    '''Calculata Shift and Slope
+def getScoreCard(woe_table, coef, inter, A, B):
+    '''Contruct a score card table.
 
-    The score of an individual i is given by the formula:
+    According score card formula:
 
         Score(i) = A - B*(b0 + b1*WOE1(i) + b2*WOE2(i)+ ... +bp*WOEp(i))
-
+    
     where bj is the coefficient of the j-th variable in the model,
     and WOEj(i) is the Weight of Evidence (WOE) value for the
     i-th individual corresponding to the j-th model variable.
@@ -167,37 +167,6 @@ def getConstant(theta, pdo, verbose=False):
 
     where B = PDO / ln(2), A = Score - B*ln(Good/Bad).
 
-    Parameters
-    ----------
-    theta : float
-        the ratio of Good/Bad or Bad/Good. Let good ratio is p, then bad 
-        ratio is (1-p), theta = p/(1-p).
-    pdo : float or int 
-        Point-to-Double Odds. When the odds is doubled, score will 
-        increate pdo. 
-    verbose : bool
-        Print verbose information, default is False.
-
-    Returns
-    --------
-    tuple
-        A tuple contains A, B. A is regarded as basescore, B is scale factor.
-
-    '''
-    B = pdo/log(2, e)
-    A = basescore - B * log(float(theta), e)
-    if verbose:
-        print("A is %s, B is %s" % (shift, slope))
-    return (A, B)
-
-
-def getScoreCard(woe_table, coef, inter, A, B):
-    '''Contruct a score card table.
-
-    According score card formula:
-
-        Score(i) = A - B*(b0 + b1*WOE1(i) + b2*WOE2(i)+ ... +bp*WOEp(i))
-    
     A, B is needed for get score.
 
     Parameters
