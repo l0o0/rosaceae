@@ -236,14 +236,16 @@ def getScore(data, scorecard, na_value=None):
         score = row['Score']
         border = row['Bin']
         var = row['Variable']
-        if var == 'basescore' or score == '--':
+
+        if var == 'basescore' or score == '--' or border == '-inf:inf':
             continue
-        if isinstance(border, str) and ':' in border:
+        
+        if pd.isna(border) or border == 'NA':            
+            flags = pd.isna(data[var])
+        elif ':' in border:            
             start, end = pd.to_numeric(border.split(':'))
             flags = ((data[var]>= start) & (data[var]<end))
-        elif border == 'NA':
-            flags = pd.isna(data[var])
         else:
-            flags = data[var] == border
+            flags = (data[var] == border)
         tmpdata.loc[flags, var] = score
     return tmpdata.apply(sum, axis=1) + basescore
