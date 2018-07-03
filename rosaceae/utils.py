@@ -92,7 +92,7 @@ def bin_plot(out):
     -------
     seaborn bar plot
     '''
-    df = pd.DataFrame([(k, len(out[k])) for k in sorted(out.keys(), key=lambda x:float(str(x).split(',')[0]))], columns=['Range', 'Number'])
+    df = pd.DataFrame([(k, len(out[k])) for k in out.keys()], columns=['Range', 'Number'])
     print(df)
     p = sns.barplot(x='Range', y='Number', data=df)
     p.set_xticklabels(p.get_xticklabels(), rotation=30)
