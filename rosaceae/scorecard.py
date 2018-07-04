@@ -92,12 +92,14 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
         A pandas data frame is returned. Contains variable, bin, good/bad case number 
         and corresponding woe and iv value.
     '''
-    if len(set(data[y]))!= 2:
+    var_y = data[y].copy()
+    var_y.reset_index(drop=True, inplace=True)
+    if len(set(var_y))!= 2:
         raise TypeError('Need binary value in label.')
 
-    bad_label = list(set(data[y]) - set([good_label]))[0]
+    bad_label = list(set(y) - set([good_label]))[0]
 
-    if vars == None:
+    if vars is None:
         vars = data.columns.tolist()
         vars.remove(y)
 
@@ -111,17 +113,21 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
         if verbose:
             print("Processing on %s" % var)
 
+        # reset index
+        var_x = data[var].copy()
+        var_x.reset_index(drop=True, inplace=True)
+
         if na_omit:
-            total_good = float(sum(data[y][~pd.isna(data[var])] == good_label))
-            total_bad = len(data[y][~pd.isna(data[var])]) - total_good
+            total_good = float(sum(var_y[~pd.isna(var_x)] == good_label))
+            total_bad = len(var_y[~pd.isna(var_x)]) - total_good
         else:
-            total_good = float(sum(data[y]==good_label))
+            total_good = float(sum(var_y==good_label))
             total_bad = data.shape[0] - total_good
 
         if dt[idx] == 0:
-            bins_out = bin_tree(data[var], data[y], na_omit=na_omit, min_samples_node= min_samples_node, **kwargs)
+            bins_out = bin_tree(var_x, var_y, na_omit=na_omit, min_samples_node= min_samples_node, **kwargs)
         elif dt[idx] == 1:
-            bins_out = bin_scatter(data[var])
+            bins_out = bin_scatter(var_x)
 
         #print(bins_out.keys())
         if verbose:
@@ -129,7 +135,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
             print("Variable\tBin\tGood(%)\tBad(%)\tWOE_i\tIV_i") 
         
         for border in bins_out:
-            border_good = float(sum(data[y][bins_out[border]]==good_label)) 
+            border_good = float(sum(var_y[bins_out[border]]==good_label)) 
             border_bad = len(bins_out[border]) - border_good
             border_woe = log((border_bad/total_bad)/(border_good/total_good))
             iv_i = (border_bad/total_bad - border_good/total_good) * border_woe
@@ -228,8 +234,11 @@ def getScore(data, scorecard, na_value=None):
     '''
     # remove empty score row
     basescore = scorecard.loc[scorecard['Variable'] == 'basescore', 'Score'].astype('float').round(0)
+    basescore = int(basescore)
     # create empty data frame whose shape is [data.shape[0], target_variable counts]
-    tmpdata = pd.DataFrame(0, columns=scorecard['Variable'].unique(), 
+    cols = scorecard['Variable'].unique().tolist()
+    cols.remove('basescore')
+    tmpdata = pd.DataFrame(0, columns=cols, 
             index=np.arange(data.shape[0]))
 
     for i, row in scorecard.iterrows():

@@ -134,6 +134,10 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
     if not na_omit:
         na_where = np.where(pd.isna(xarray.iloc[:,0]))[0]
     
+    # reset index for x and y in case of IndexingError
+    xarray.reset_index(drop=True, inplace=True)
+    y.reset_index(drop=True, inplace=True)
+    
     y = y[~pd.isna(xarray.iloc[:,0])]
     xarray.dropna(inplace=True)
                 
