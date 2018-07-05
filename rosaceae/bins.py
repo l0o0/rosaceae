@@ -76,7 +76,7 @@ def bin_custom(xarray, border):
     return out
 
 
-def bin_scatter(xarray, border = None):
+def bin_scatter(xarray, border = None, na_omit=True):
     '''Binning discretization data.
 
     Parameteres
@@ -92,11 +92,19 @@ def bin_scatter(xarray, border = None):
         Category as key names. Corresponding row index list as values.
     '''
     out = {}
-    if not border:
+    if border is None:
         values = list(set(xarray))
+        values = [str(i_) for i_ in values]
         border = sorted(values)
+
+    if na_omit and 'None' in border:
+        border.remove('None')
+        
     for i in border:
-        out[i] = np.where(xarray == i)[0]
+        if i == 'None' or i == 'nan':
+            out['None'] = np.where(pd.isna(xarray))[0]
+        else:
+            out[i] = np.where(xarray == i)[0]
     return out
 
 
