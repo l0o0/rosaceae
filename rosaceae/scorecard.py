@@ -127,7 +127,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
         if dt[idx] == 0:
             bins_out = bin_tree(var_x, var_y, na_omit=na_omit, min_samples_node= min_samples_node, **kwargs)
         elif dt[idx] == 1:
-            bins_out = bin_scatter(var_x)
+            bins_out = bin_scatter(var_x, na_omit=na_omit)
 
         #print(bins_out.keys())
         if verbose:
@@ -137,6 +137,13 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
         for border in bins_out:
             border_good = float(sum(var_y[bins_out[border]]==good_label)) 
             border_bad = len(bins_out[border]) - border_good
+
+            # In case of divide zero error, set border_good = 1 when it's 0
+            if border_good == 0:
+                border_good = 1
+            if border_bad == 0:
+                border_bad = 1
+
             border_woe = log((border_bad/total_bad)/(border_good/total_good))
             iv_i = (border_bad/total_bad - border_good/total_good) * border_woe
             row = [var,
