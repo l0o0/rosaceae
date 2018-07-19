@@ -56,6 +56,8 @@ def replaceWOE(woes, data):
             if isinstance(border, str) and ':' in border:
                 start, end = pd.to_numeric(border.split(':'))
                 flags = ((woe_data[var]>= start) & (woe_data[var]<end))
+            elif border == 'NA':
+                flags = pd.isna(woe_data[var])
             else:
                 flags = woe_data[var] == border
             woe_data.loc[flags, var] = var_woe[border][0]
