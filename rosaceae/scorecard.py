@@ -177,10 +177,10 @@ def getScoreCard(woe_table, coef, inter, A, B):
 
     In short formula:
 
-        Score = A + B*ln(Good/Bad)
-        Score + PDO = A + B*ln(2* Good/Bad)
+        Score = A - B*ln(Good/Bad)
+        Score + PDO = A - B*ln(2* Good/Bad)
 
-    where B = PDO / ln(2), A = Score - B*ln(Good/Bad).
+    where B = -PDO / ln(2), A = Score + B*ln(Good/Bad).
 
     A, B is needed for get score.
 
