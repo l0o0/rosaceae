@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
+from functools import reduce
 from itertools import combinations
 from math import log
 from sklearn.linear_model import LogisticRegression
@@ -21,13 +22,26 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
 
 
-def model_selecter(x_train, x_test, y_train, y_test, start=1, end=None, verbose=False):
+def model_selector(x_train, x_test, y_train, y_test, start=1, end=None, thresh=None, verbose=False):
     '''
     '''
+
+    def factorial(m,n):
+        return reduce(lambda x,y:x*y, range(1,m+1)[-n:])
+    
+    def com_count(m, n):
+        return factorial(m,n)/factorial(n,0)
+
+
     result_df = pd.DataFrame(columns=['Var_No', 'Vars', 'train_score', 'test_score','coef', 'inter'])
     if not end:
         end = x_train.shape[1]
     cols = x_train.columns
+
+    # total try counts
+    total_try = sum([com_count(len(cols), n) for n in range(start, end+1)])
+    print("Total events: %s" % total_try)
+
     for n in range(start, end+1):
         cols_try = combinations(cols, n)
 
@@ -41,8 +55,12 @@ def model_selecter(x_train, x_test, y_train, y_test, start=1, end=None, verbose=
             clf.fit(tmp_train, y_train)
             train_roc_score = roc_auc_score(y_train, clf.decision_function(tmp_train))
             test_roc_score = roc_auc_score(y_test, clf.decision_function(tmp_test))
+            
             if verbose:
                 print("%s\t%s\t%s\t%s" % (n, ','.join(t), train_roc_score, test_roc_score))
+
+            if thresh and test_roc_score < thresh:
+                continue
 
             row = 0 if pd.isna(result_df.index.max()) else result_df.index.max() + 1
             result_df.loc[row] = [n, ','.join(t), train_roc_score, test_roc_score, clf.coef_[0], clf.intercept_[0]]
@@ -51,7 +69,7 @@ def model_selecter(x_train, x_test, y_train, y_test, start=1, end=None, verbose=
 
 
 # Use cross validation to evaluate models.
-def model_selecter2(x, y, start=1, end=None, verbose=False):
+def model_selector2(x, y, start=1, end=None, verbose=False):
     result_df = pd.DataFrame(columns=['Var_No', 'Vars', 'score', 'std'])
     if not end:
         end = x.shape[1]
