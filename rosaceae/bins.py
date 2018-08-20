@@ -93,16 +93,14 @@ def bin_scatter(xarray, border = None, na_omit=True):
     '''
     out = {}
     if border is None:
-        values = list(set(xarray))
-        values = [str(i_) for i_ in values]
+        values = list(set(xarray[~pd.isnull(xarray)]))
         border = sorted(values)
 
-    if na_omit and 'None' in border:
-        border.remove('None')
-        
+    if not na_omit and sum(pd.isnull(xarray)) > 0:
+        out['NA'] = np.where(pd.isnull(xarray))[0]
     for i in border:
         if i == 'None' or i == 'nan':
-            out['None'] = np.where(pd.isna(xarray))[0]
+            out['None'] = np.where(pd.isnull(xarray))[0]
         else:
             out[i] = np.where(xarray == i)[0]
     return out
