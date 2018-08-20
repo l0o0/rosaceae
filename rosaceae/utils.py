@@ -248,7 +248,7 @@ def frequency_table(xarray, label, steps):
         label_counts = label[value_idx].value_counts()
         label_counts_dict = dict(zip(label_counts.index, label_counts))
 
-        row = [str(border),
+        row = ["[%s,%s)" % (border[0], border[1]),
                "%s%%" % (round(tmp_length/total_length * 100, 3)),
                "%s%%" % (round(sum_length/total_length * 100, 3)),
                tmp_length,
