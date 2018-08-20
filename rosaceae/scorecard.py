@@ -218,6 +218,9 @@ def getScoreCard(woe_table, coef, inter, A, B):
     scorecard = woe_table.copy()
     scorecard['Score'] = scores
     scorecard.loc[scorecard.shape[0]] = ['basescore'] + ['--'] * (scorecard.shape[1]-2) + [basescore]
+    scorecard['ScoreRaw'] = scorecard['Score']
+    scorecard['Score'] = scorecard['Score'].map(lambda x:x if x=='--' else int(round(x, 0)))
+    scorecard['Bin'] = scorecard['Bin'].fillna('NA')
     return scorecard
 
         
