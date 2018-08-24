@@ -100,7 +100,7 @@ def bin_scatter(xarray, border = None, na_omit=True):
         out['NA'] = np.where(pd.isnull(xarray))[0]
     for i in border:
         if i == 'None' or i == 'nan':
-            out['None'] = np.where(pd.isnull(xarray))[0]
+            continue 
         else:
             out[i] = np.where(xarray == i)[0]
     return out
@@ -145,9 +145,9 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
     y.reset_index(drop=True, inplace=True)
     
     y = y[~pd.isna(xarray.iloc[:,0])]
-    xarray.dropna(inplace=True)
+    xarray_substitute = xarray.dropna()     # remove NA value for sklearn
                 
-    clf.fit(xarray, y)                                
+    clf.fit(xarray_substitute, y)                                
     children_left = clf.tree_.children_left
     children_right = clf.tree_.children_right
     threshold = clf.tree_.threshold
@@ -175,3 +175,21 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
         out['NA'] = na_where
     
     return out
+
+
+# For chi-square binning
+def bin_chi2(xarray, label, bins_num, na_omit=True):
+    '''Binning data by chi-square.
+
+    Parameters
+    ----------
+    xarray:
+    label:
+    bins_num:
+    na_omit:
+
+    Returns
+    -------
+    '''
+
+    return 
