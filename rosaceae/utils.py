@@ -17,7 +17,7 @@ from functools import reduce
 from itertools import combinations
 from math import log
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
 
@@ -206,6 +206,47 @@ def score_ks_plot(score, label, bad=1, good=0):
     ax.legend(bbox_to_anchor=(0, -0.15),ncol=1, loc=3)
     ax.set_xlabel('Score')
     return ax
+
+
+
+def roc_plot(y_real, y_pred, title=None):
+    fpr, tpr, thresh = roc_curve(y_real,  y_pred)
+
+    sum_sensitivity_specificity_train = tpr + (1-fpr)
+    best_threshold_id = np.argmax(sum_sensitivity_specificity_train)
+    best_threshold = thresh[best_threshold_id]
+    best_fpr = fpr[best_threshold_id]
+    best_tpr = tpr[best_threshold_id]
+
+    auc = roc_auc_score(y_real, y_pred)
+    
+    plt.figure(figsize=(8,8))
+    plt.plot(fpr,tpr)
+    plt.plot(best_fpr, best_tpr, marker='o', color='black')
+    plt.text(best_fpr, 
+            best_tpr, 
+            s = '%.3f, (%.3f,%.3f)' %(thresh[best_threshold_id], best_fpr, best_tpr),
+            fontsize=10)
+
+    plt.plot([0, 1], [0, 1], color='pink', linestyle='--')
+    
+    plt.xlabel('False Positive Rate', fontsize=18)
+    plt.ylabel('True Positive Rate', fontsize=18)
+    if title:
+        title_text = 'ROC curve(%s), AUC = %.4f' % (title, auc)
+    else:
+        title_text = 'ROC curve, AUC = %.4f' % (auc)
+    plt.title(title_text, fontsize = 20, fontweight='bold')
+
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.grid(True)
+    plt.show()
+
+
+# TODO
+# PIS 
+
 
 #####################################################################
 # summary function
