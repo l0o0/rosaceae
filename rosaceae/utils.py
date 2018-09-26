@@ -164,7 +164,7 @@ def score_ks_plot(score, label, bad=1, good=0):
     total_good = float(label.count(good))
     total_bad = float(label.count(bad))
 
-    step = int(len(score) / 100)
+    step = (max(score) - min(score)) / 100
 
     good_list = []
     bad_list = []
@@ -172,10 +172,10 @@ def score_ks_plot(score, label, bad=1, good=0):
 
     max_dist = (0,0)
     for i in range(1, 101):
-        idx = int(i*step)
+        idx = min(score) + int(i*step)
         #print(idx)
-        score_ticks.append(items[idx][0])
-        tmp_label = [x[1] for x in items[0:idx]]
+        score_ticks.append(idx)
+        tmp_label = [x[1] for x in items if x[0] < idx]
         good_rate = tmp_label.count(good) / total_good
         bad_rate = tmp_label.count(bad) / total_bad
 
@@ -210,6 +210,21 @@ def score_ks_plot(score, label, bad=1, good=0):
 
 
 def roc_plot(y_real, y_pred, title=None):
+    '''ROC-plot
+
+    Parameters
+    ----------
+    y_real : list or array like
+        True binary lables. Get more detial help from `sklearn.metrics.roc_curve`.
+    y_pred : list or array like
+        Probability estimates from model.
+    title : str or int
+        Bad case label, default is int 1.
+
+    Returns
+    -------
+    ROC-plot is returned.
+    '''
     fpr, tpr, thresh = roc_curve(y_real,  y_pred)
 
     sum_sensitivity_specificity_train = tpr + (1-fpr)
@@ -225,7 +240,7 @@ def roc_plot(y_real, y_pred, title=None):
     plt.plot(best_fpr, best_tpr, marker='o', color='black')
     plt.text(best_fpr, 
             best_tpr, 
-            s = '%.3f, (%.3f,%.3f)' %(thresh[best_threshold_id], best_fpr, best_tpr),
+            s = 'Thresh:%.3f, (FPR:%.3f, TPR:%.3f)' %(thresh[best_threshold_id], best_fpr, best_tpr),
             fontsize=10)
 
     plt.plot([0, 1], [0, 1], color='pink', linestyle='--')
