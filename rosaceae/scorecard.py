@@ -99,7 +99,7 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
     if len(set(var_y))!= 2:
         raise TypeError('Need binary value in label.')
 
-    bad_label = list(set(y) - set([good_label]))[0]
+    bad_label = list(set(var_y) - set([good_label]))[0]
 
     if vars is None:
         vars = data.columns.tolist()
@@ -219,8 +219,9 @@ def getScoreCard(woe_table, coef, inter, A, B):
     scorecard['Score'] = scores
     scorecard.loc[scorecard.shape[0]] = ['basescore'] + ['--'] * (scorecard.shape[1]-2) + [basescore]
     scorecard['ScoreRaw'] = scorecard['Score']
-    scorecard['Score'] = scorecard['Score'].map(lambda x:x if x=='--' else int(round(x, 0)))
+    scorecard['Score'] = scorecard['Score'].map(lambda x:x if x=='--' else int(np.round(x, 0)))
     scorecard['Bin'] = scorecard['Bin'].fillna('NA')
+    scorecard.reset_index(drop=True, inplace=True)
     return scorecard
 
         
