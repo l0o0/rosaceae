@@ -97,7 +97,7 @@ def bin_scatter(xarray, border = None, na_omit=True):
         border = sorted(values)
 
     if not na_omit and sum(pd.isnull(xarray)) > 0:
-        out['NA'] = np.where(pd.isnull(xarray))[0]
+        out['Miss'] = np.where(pd.isnull(xarray))[0]
     for i in border:
         if i == 'None' or i == 'nan':
             continue 
@@ -172,7 +172,7 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
         out[key] = np.where((xarray >= start) & (xarray < end))[0]
     
     if not na_omit and len(na_where) > 0:
-        out['NA'] = na_where
+        out['Miss'] = na_where
     
     return out
 

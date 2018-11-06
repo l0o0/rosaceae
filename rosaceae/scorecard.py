@@ -56,7 +56,7 @@ def replaceWOE(woes, data):
             if isinstance(border, str) and ':' in border:
                 start, end = pd.to_numeric(border.split(':'))
                 flags = ((woe_data[var]>= start) & (woe_data[var]<end))
-            elif border == 'NA':
+            elif border == 'Miss':
                 flags = pd.isna(woe_data[var])
             else:
                 flags = woe_data[var] == border
@@ -220,7 +220,7 @@ def getScoreCard(woe_table, coef, inter, A, B):
     scorecard.loc[scorecard.shape[0]] = ['basescore'] + ['--'] * (scorecard.shape[1]-2) + [basescore]
     scorecard['ScoreRaw'] = scorecard['Score']
     scorecard['Score'] = scorecard['Score'].map(lambda x:x if x=='--' else int(np.round(x, 0)))
-    scorecard['Bin'] = scorecard['Bin'].fillna('NA')
+    scorecard['Bin'] = scorecard['Bin'].fillna('Miss')
     scorecard.reset_index(drop=True, inplace=True)
     return scorecard
 
@@ -262,7 +262,7 @@ def getScore(data, scorecard, na_value=None):
         if var == 'basescore' or score == '--' or border == '-inf:inf':
             continue
         
-        if pd.isna(border) or border == 'NA':            
+        if pd.isna(border) or border == 'Miss':            
             flags = pd.isna(data[var])
         elif ':' in border:            
             start, end = pd.to_numeric(border.split(':'))
