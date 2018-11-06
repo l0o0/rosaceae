@@ -14,6 +14,6 @@ setup(
     author_email='linxzh1989@gmail.com',
     keywords=['scorecards', 'woe', 'iv'],
     url='',
-    install_requires=['numpy', 'pandas', 'seaborn'],
+    install_requires=['numpy', 'pandas', 'seaborn', 'sklearn'],
     packages=find_packages()
 )
