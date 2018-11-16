@@ -263,9 +263,8 @@ def getScore(data, scorecard, na_value=None):
     # create empty data frame whose shape is [data.shape[0], target_variable counts]
     cols = scorecard['Variable'].unique().tolist()
     cols.remove('basescore')
-    tmpdata = pd.DataFrame(0, columns=cols, 
-            index=np.arange(data.shape[0]))
-
+    tmpdata = pd.DataFrame(0, columns=cols, index=data.index )
+    
     for i, row in scorecard.iterrows():
         score = row['Score']
         border = row['Bin']
