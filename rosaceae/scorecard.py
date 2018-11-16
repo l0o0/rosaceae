@@ -161,7 +161,19 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
                 print('\t'.join([str(_i) for _i in row]))
     iv = info_df.groupby('Variable').IV_i.sum()
     info_df['IV'] = info_df['Variable'].map(lambda x:iv[x])
-    return info_df
+    
+    # reorder the info data frame by IV and bins
+    reorder_idx = []
+    for v in woe_df.sort_values(by='IV', ascending=False)['Variable'].unique():
+        tmpidx = woe_df.index[woe_df['Variable']==v]
+        tmpbins = woe_df['Bin'][woe_df['Variable']==v]
+        tmp = zip(tmpidx, tmpbins)
+        if sum(tmpbins.str.contains(':')) > 0:
+            bins = sorted(tmp, key=lambda x: pd.to_numeric('inf') if x[1]=='Miss' else pd.to_numeric(x[1].split(':')[0]))
+        else:
+            bins = tmp
+        reorder_idx.extend([x[0] for x in bins])
+    return info_df.iloc[reorder_idx, :].reset_index(drop=True)
 
 
 def getScoreCard(woe_table, coef, inter, A, B):
