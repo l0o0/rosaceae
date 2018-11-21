@@ -110,35 +110,6 @@ def bin_distance(xarray, bins=5, na_omit=False, verbose=False):
     return out
 
 
-def bin_scatter(xarray, border = None, na_omit=True):
-    '''Binning discretization data.
-
-    Parameteres
-    -----------
-    xarray : array like
-        Input discretization data array. Data value is not continous numberic.
-    border : array like
-        Unfinished
-    
-    Returns
-    -------
-    Dictionary
-        Category as key names. Corresponding row index list as values.
-    '''
-    out = {}
-    if border is None:
-        values = list(set(xarray[~pd.isnull(xarray)]))
-        border = sorted(values)
-
-    if not na_omit and sum(pd.isnull(xarray)) > 0:
-        out['Miss'] = np.where(pd.isnull(xarray))[0]
-    for i in border:
-        if i == 'None' or i == 'nan':
-            continue 
-        else:
-            out[i] = np.where(xarray == i)[0]
-    return out
-
 
 def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
     '''Binning data according DecisionTree node.
