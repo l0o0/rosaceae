@@ -13,7 +13,7 @@ import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 
 
-def bin_frequency(xarray, bins=5, na_omit=False):
+def bin_frequency(xarray, bins=5, na_omit=False, verbose=False):
     '''Data discretization by the same frequency.
 
     Data are binned by the same frequency. Frequency is controlled by bins
@@ -28,6 +28,7 @@ def bin_frequency(xarray, bins=5, na_omit=False):
     na_omit: False or True
         Keep or drop missing value. Default is False, missing value will be grouped 
         in a separate bin.
+    verbose: True or False, default is False
     
     Returns
     -------
@@ -42,9 +43,12 @@ def bin_frequency(xarray, bins=5, na_omit=False):
 
     if na_omit:
         xarray = xarray[~pd.isna(xarray)]
-    else:
+    elif not na_omit and sum(pd.isna(xarray)) > 0:
         out['Miss'] = np.where(pd.isna(xarray))[0]
+
     step = int(len(xarray) / bins)
+    if verbose:
+        print('Step: %s'% step)
 
     for i in range(bins):
         group = 'Freq%s' % (i+1)
@@ -55,25 +59,53 @@ def bin_frequency(xarray, bins=5, na_omit=False):
     return out
 
 
-def bin_distance(xarray, bins=5):
+def bin_distance(xarray, bins=5, na_omit=False, verbose=False):
     '''Data discretization in the same distance.
+
     Data are binned by the same distance, the distance is controlled by max
     interval and bins number. Max interval = max(xarray) - min(xarray),
     distance = (max interval) / (bins number).
 
-    Args:
-        xarray: Pandas.Series or Numpy.array type data.
-        bins: int, bins number.
+    Parameters
+    ----------
+    xarray: Pandas.Series or Numpy.array 
+    bins: Int
+        Number of bins.
+    na_omit: False or True
+        Keep or drop missing value. Default is False, missing value will be grouped 
+        in a separate bin.
+    verbose: True or False, default is False
+
+    Returns
+    -------
+    Dictionary
+        Bin as key names. Corresponding row index as values.
     '''
     distance = (max(xarray) - min(xarray)) / bins
-    MIN = min(xarray)
 
+    xarray = xarray.copy()
+    xarray.reset_index(drop=True, inplace=True)
+
+    if verbose:
+        print('Distance: %s' % distance)
+
+    if not na_omit and sum(pd.isna(xarray)) > 0:
+        out['Miss'] = np.where(pd.isna(xarray))[0]
+
+    MIN = min(xarray)
     out = {}
     for i in range(bins):
-        left = MIN + i * distance
-        right = MIN + (i+1) * distance
+        if i ==0:
+            left = -np.inf
+        else:
+            left = MIN + i * distance
+
+        if i == bins-1:
+            right = np.inf 
+        else:
+            right = MIN + (i+1) * distance
         key = "[%s,%s)" % (left, right)
-        out[key] = np.where(np.logical_and(xarray>=left, xarray<right))[0]
+        out[key] = xarray.index[(xarray>=left) & (xarray<right)]
 
     return out
 
