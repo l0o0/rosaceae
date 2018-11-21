@@ -93,6 +93,76 @@ def model_selector2(x, y, start=1, end=None, verbose=False):
 
     return result_df
 
+
+# Function for data eda.
+def summary(data, verbose=False):
+    '''Generates descriptive statistics for a dataset
+
+    Generates descriptive statistics that summarize the central tendency,
+    dispersion and shape of a dataset's distribution. When data is categorious 
+    or datatime format, some statistics values will be replaced by NA. 
+
+    Parameters
+    ----------
+    data : pandas data frame
+    verbose : True or False
+            Print verbose message, default is False.
+    
+    Returns
+    -------
+    A pandas data frame with statistics values for each column.
+    Field: Field name.
+    Type: object, numeric, integer, other.
+    Recs: Number of records.
+    Miss: Number of missing records.
+    Min: Minimum value.
+    Q25: First quartile. It splits off the lowest 25\% of data from the highest 75\%.
+    Q50: Median or second quartile. It cuts data set in half.
+    Avg: Average value.
+    Q75: Third quartile. It splits off the lowest 75\% of data from the highest 25\%.
+    Max: Maximum value.
+    StDv: Standard deviation of a sample.
+    Neg: Number of negative values.
+    Pos: Number of positive values.
+    OutLo: Number of outliers. Records below \code{Q25-1.5*IQR}, where \code{IQR=Q75-Q25}. 
+    OutHi: Number of outliers. Records above \code{Q75+1.5*IQR}, where \code{IQR=Q75-Q25}.
+    '''
+    tmpdf = pd.DataFrame(columns=['Field', 'Type', 'Recs', 'Miss', 'Min', 'Q25', 'Q50', 
+                                  'Avg', 'Q75', 'Max', 'StDv', 'Uniq', 'OutLo', 'OutHi'])
+    for i,col in enumerate(data.columns):
+        datatype = str(data[col].dtype)
+        recs = len(data[col])
+        miss = sum(pd.isna(data[col]))
+        uniq = len(data[col].unique())
+        if verbose:
+            print(col)
+        if datatype == 'object' or 'datetime' in datatype:
+            _min = np.nan
+            _max = np.nan
+            q25 = np.nan
+            q50 = np.nan
+            avg = np.nan
+            q75 = np.nan
+            stdv = np.nan
+            outlo = np.nan
+            outhi = np.nan            
+        else:
+            desc = data[col].describe()
+            _min = desc['min']
+            _max = desc['max']
+            q25 = float(format(desc['25%'], '.4g'))
+            q50 = float(format(desc['50%'], '.4g'))
+            q75 = float(format(desc['75%'], '.4g'))
+            avg = float(format(desc['mean'], '.4g'))
+            stdv = float(format(desc['std'], '.4g'))
+            outlo = sum(data[col] < q25 - 1.5 * (q75- q25))
+            outhi = sum(data[col] > q75 + 1.5 * (q75- q25))
+                
+        tmpdf.loc[i] = [col, datatype, recs, miss, _min, q25, q50, avg, q75, _max, stdv, uniq, outlo, outhi]
+    return tmpdf
+
+
+
 #####################################################################
 # visulization function
 #####################################################################
