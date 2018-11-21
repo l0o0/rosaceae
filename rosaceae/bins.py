@@ -13,26 +13,45 @@ import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 
 
-def bin_frequency(xarray, bins=5):
+def bin_frequency(xarray, bins=5, na_omit=False):
     '''Data discretization by the same frequency.
+
     Data are binned by the same frequency. Frequency is controlled by bins
-    number, frequency = (total length of xarray) / (bins number) .
+    number, frequency = (total length of xarray) / (bins number). Data will
+    be sorted in ascending. Missing values will be palced at the end.
 
-    Args:
-        xarray: Pandas.Series or Numpy.array type data.
-        bins: int, bins number.
+    Parameters
+    ----------
+    xarray: Pandas.Series or Numpy.array type data.
+    bins: int,
+        Number of bins.
+    na_omit: False or True
+        Keep or drop missing value. Default is False, missing value will be grouped 
+        in a separate bin.
+    
+    Returns
+    -------
+    Dictionary
+        Bin as key names. Corresponding row index as values.
     '''
-
-    xarray_sorted = sorted(xarray)
-    step = len(xarray) / bins
-
+    
+    xarray = xarray.copy()
+    xarray.reset_index(drop=True, inplace=True)
+    xarray.sort_values(inplace=True)
     out = {}
-    for i in range(bins):
-        left = xarray_sorted[i*step]
-        right = xarray_sorted[(i+1)*step]
-        key = "%s,%s" % (left, right)
-        out[key] = np.where(np.logical_and(xarray>=left, xarray<right))[0]
 
+    if na_omit:
+        xarray = xarray[~pd.isna(xarray)]
+    else:
+        out['Miss'] = np.where(pd.isna(xarray))[0]
+    step = int(len(xarray) / bins)
+
+    for i in range(bins):
+        group = 'Freq%s' % (i+1)
+        if i == bins -1:
+            out[group] = xarray.index[i*step:]
+        else:
+            out[group] = xarray.index[i*step:(i+1)*step]
     return out
 
 
@@ -53,25 +72,8 @@ def bin_distance(xarray, bins=5):
     for i in range(bins):
         left = MIN + i * distance
         right = MIN + (i+1) * distance
-        key = "%s,%s" % (left, right)
+        key = "[%s,%s)" % (left, right)
         out[key] = np.where(np.logical_and(xarray>=left, xarray<right))[0]
-
-    return out
-
-
-def bin_custom(xarray, border):
-    '''Binning data by customize boundary.
-
-    Args:
-        xarray : a numpy array.
-        border : a border list.
-    '''
-    out = {}
-
-    for i, j in enumerate(border):
-        k = '%s,%s' % (border[i-1],j)
-        tmp = np.where(np.logical_and(xarray>=border[i-1], xarray<border[i]))[0]
-        out[k] = tmp
 
     return out
 
@@ -168,7 +170,7 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
     for i, b in enumerate(breaks[1:]):
         start = breaks[i]
         end = b
-        key = "%s:%s" % (start, end)
+        key = "[%s:%s)" % (start, end)
         out[key] = np.where((xarray >= start) & (xarray < end))[0]
     
     if not na_omit and len(na_where) > 0:
@@ -193,3 +195,69 @@ def bin_chi2(xarray, label, bins_num, na_omit=True):
     '''
 
     return 
+
+
+# For custom binning. 
+def bin_custom(xarray, groups, na_omit=False, verbose=False):
+    '''Binning data by customized binning boundary
+
+    Parameters
+    ----------
+    xarray: array like data
+
+    groups: list like 
+        Custom binning boundary. For numeric data, ['(-inf:3]', '(3:6]', '(6:inf)'].
+        For categorious data, [('A', 'B'), ('C'), ('D','E', 'Miss')], `Miss` is used 
+        for missing data(NA values). However you can not put `Miss` in numeric data.
+    na_omit: True or False
+        Default is False. Get all NA in a separate group. If `Miss` in a customized 
+        categorious data, this Miss separate group will delete from output.
+    verbose: True or False, 
+        Default is False. Print verbose message.
+    '''
+    # reset index 
+    xarray = xarray.copy()
+    xarray.reset_index(drop=True, inplace=True)
+
+    if not isinstance(groups, list):
+        raise TypeError('groups is a list, contains customized binning boundary')
+
+    out = {}
+
+    # handle missing data.
+    if not na_omit:
+        if verbose:
+                print('Keep NA data')
+        tmp = np.where(pd.isna(xarray))[0]
+        if verbose:
+                print('Missing data: %s' % len(tmp))
+        if len(tmp) > 0:
+            out['Miss'] = np.where(pd.isna(xarray))[0]
+
+    if ':' in groups[0]:    # numeric custom
+
+        for g in groups:
+            if verbose:
+                print('* Handling %s' % g)
+            start, end = pd.to_numeric(g[1:-1].split(':'))
+            if g.startswith('(') and g.endswith(']'):
+                out[g] = np.where((xarray > start) & (xarray <= end))[0]
+            elif g.startswith('[') and g.endswith(']'):
+                out[g] = np.where((xarray >= start) & (xarray <= end))[0]
+            elif g.startswith('(') and g.endswith(')'):
+                out[g] = np.where((xarray > start) & (xarray < end))[0]
+            elif g.startswith('[') and g.endswith(')'):
+                out[g] = np.where((xarray >= start) & (xarray < end))[0]
+    else:   # category custom
+        for g in groups:
+            if verbose:
+                print('* Handling %s' % str(g))
+            if isinstance(g, str):
+                g = (g,)
+            if 'Miss' in g:
+                out[g] = np.where((xarray.isin(list(g))) | (pd.isna(xarray)))[0]
+                del out['Miss']
+            else:
+                out[g] = np.where(xarray.isin(list(g)))[0]
+    
+    return out
