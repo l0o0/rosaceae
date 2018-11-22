@@ -10,10 +10,11 @@ from __future__ import print_function
 
 import numpy as np
 import pandas as pd
+from itertools import combinations
 from sklearn.tree import DecisionTreeClassifier
 
 
-def bin_frequency(xarray, bins=5, na_omit=False, verbose=False):
+def bin_frequency(xarray, bins=5, na_omit=True, verbose=False):
     '''Data discretization by the same frequency.
 
     Data are binned by the same frequency. Frequency is controlled by bins
@@ -26,7 +27,7 @@ def bin_frequency(xarray, bins=5, na_omit=False, verbose=False):
     bins: int,
         Number of bins.
     na_omit: False or True
-        Keep or drop missing value. Default is False, missing value will be grouped 
+        Keep or drop missing value. Default is True, missing value will be grouped 
         in a separate bin.
     verbose: True or False, default is False
     
@@ -59,7 +60,7 @@ def bin_frequency(xarray, bins=5, na_omit=False, verbose=False):
     return out
 
 
-def bin_distance(xarray, bins=5, na_omit=False, verbose=False):
+def bin_distance(xarray, bins=5, na_omit=True, verbose=False):
     '''Data discretization in the same distance.
 
     Data are binned by the same distance, the distance is controlled by max
@@ -72,7 +73,7 @@ def bin_distance(xarray, bins=5, na_omit=False, verbose=False):
     bins: Int
         Number of bins.
     na_omit: False or True
-        Keep or drop missing value. Default is False, missing value will be grouped 
+        Keep or drop missing value. Default is True, missing value will be grouped 
         in a separate bin.
     verbose: True or False, default is False
 
@@ -116,7 +117,7 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
 
     Parameters
     ----------
-    xarray : array like or ndarray
+    xarray : pandas series data
         Input feature value, array like, shape = [n_samples] or
         [n_samples, 1]
     y : array like
@@ -183,25 +184,122 @@ def bin_tree(xarray, y, min_samples_node=0.05, na_omit=True, **kwargs):
 
 
 # For chi-square binning
-def bin_chi2(xarray, label, bins_num, na_omit=True):
-    '''Binning data by chi-square.
+def chi2(a, bad_rate):
+        b = [int(sum(a)*bad_rate), sum(a)- int(sum(a)*bad_rate)]
+        chi = (a[0] - b[0])**2 / b[0] + (a[1] - b[1])**2 / b[1]
+        return chi
 
-    Parameters
-    ----------
-    xarray:
-    label:
-    bins_num:
-    na_omit:
+    
+def recursion(groups, counts, bins, numeric=False, verbose=False):
+    max_chi = 0
+    if not numeric:
+        for _i, i in combinations(range(len(groups)), 2):
+            com = (_i, i)
+            com_count = counts[i] +  counts[_i]
+            tmpchi = chi2(com_count, bad_rate)
+            if tmpchi > max_chi:
+                max_chi = tmpchi
+                max_com_idx = com
+        # merge similar categories into one 
+        if verbose:
+            print('("{0}") + ("{1}") --> ("{0},{1}")'.format(groups[max_com_idx[0]], groups[max_com_idx[1]]))
+        merged = '%s,%s' % (groups[max_com_idx[0]], groups[max_com_idx[1]])
+        groups = [g for _, g in enumerate(groups) if _ not in max_com_idx]
+        merged_counts = counts[max_com_idx[0]] + counts[max_com_idx[1]]
+        counts = [c for _, c in enumerate(counts) if _ not in max_com_idx]
+        groups.append(merged)
+        counts.append(merged_counts)
+    else:
+        max_com_idx = tuple()
+        for i in range(1, len(groups)-1):
+            chi_before = chi2(counts[i-1] + counts[i], bad_rate)
+            chi_after = chi2(counts[i] + counts[i+1], bad_rate)
+            if chi_before > max_chi:
+                max_com_idx = (i-1, i)
+                max_chi = chi_before
+            elif chi_after > max_chi:
+                max_com_idx = (i, i+1)
+                max_chi = chi_after
+        merged = (groups[max_com_idx[0]][0], groups[max_com_idx[1]][1]) # create a new boundary
+        if verbose:
+            print(groups[max_com_idx[0]], groups[max_com_idx[1]], '-->' ,merged)
+        groups = groups[:max_com_idx[0]] + [merged] + groups[max_com_idx[1]+1:]
+        merged_counts = counts[max_com_idx[0]] + counts[max_com_idx[1]]
+        counts = counts[:max_com_idx[0]] + [merged_counts] + counts[max_com_idx[1]+1:]
+    if len(groups) <= bins:
+        return groups
+    else:
+        return recursion(groups, counts, bins, numeric=numeric, verbose=verbose)
 
-    Returns
-    -------
-    '''
+        
+def bin_chi2(xarray, y, bins, min_sample=0.01, na_omit=True, verbose=False):
+    xarray = xarray.copy()
+    xarray.reset_index(drop=True, inplace=True) 
+    out = {}
+    # remove missing values or not 
+    if na_omit:
+        xarray = xarray[~pd.isna(xarray)]
+        y = y[~pd.isna(xarray)]        
+    elif not na_omit:
+        out['Miss'] = xarray.index[pd.isna(xarray)]
+    total_bad = xarray.sum()
+    bad_rate = total_bad / len(y)
+    # numeric or categorious
+    if xarray.dtype == 'object':
+        if verbose:
+            print('Categorious data detected.')
+        groups = list(set(xarray[~pd.isna(xarray)]))
+        counts = []
+        for g in groups:
+            tmp = y[xarray==g]
+            counts.append(np.array(sum(tmp), len(tmp)-sum(tmp)))
+        groups = recursion(groups, counts, bins, numeric=False, verbose=verbose)
+    else:
+        if verbose:
+            print('Numeric data detected.')
+        rounds = 50
+        q25 = np.percentile(xarray, 25)
+        q75 = np.percentile(xarray, 75)
+        iqr = q75-q25 
+        min_value = max(min(xarray), q25 - 1.5*iqr)
+        max_value = min(max(xarray), q75 + 1.5*iqr)
+        step = (max_value - min_value) / rounds # exclude outlier
+        borders = [-np.inf] + [min_value + step *i for i in range(1,rounds)] + [np.inf]
+        
+        if verbose:
+            print("Range from min value: %s, max value: %s, step: %s" % (min_value, max_value, step))    
+        groups = []
+        counts = []
+        
+        # create a boundary list and remove small group
+        i_start = 0
+        for _i, b in enumerate(borders[1:]):
+            start = borders[i_start]
+            end = b
+            if sum((xarray >= start) & (xarray < end)) < len(y) * min_sample:
+                continue
+            else:
+                tmp = y[(xarray >= start) & (xarray < end)]
+                groups.append((start, end))
+                counts.append(np.array((sum(tmp), len(tmp)-sum(tmp))))
+            i_start = _i + 1
+        # add +inf if deleted 
+        if groups[-1][1] != np.inf:
+            start = groups[-1][0]
+            end = np.inf
+            tmp = y[(xarray >= start) & (y < end)]
+            groups[-1] = (start, end)
+            counts[-1] = np.array((sum(tmp), len(tmp)-sum(tmp)))
+            
+        if verbose:
+            print('Init groups:', groups)
+        groups = recursion(groups, counts, bins, numeric=True, verbose=verbose)
 
-    return 
+    return groups
 
 
 # For custom binning. 
-def bin_custom(xarray, groups, na_omit=False, verbose=False):
+def bin_custom(xarray, groups, na_omit=True, verbose=False):
     '''Binning data by customized binning boundary
 
     Parameters
