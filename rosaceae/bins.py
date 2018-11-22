@@ -276,10 +276,18 @@ def bin_chi2(xarray, y, bins, min_sample=0.01, na_omit=True, verbose=False):
         for _i, b in enumerate(borders[1:]):
             start = borders[i_start]
             end = b
+<<<<<<< HEAD
             if sum((xarray >= start) & (xarray < end)) < len(y) * min_sample:
                 continue
             else:
                 tmp = y[(xarray >= start) & (xarray < end)]
+=======
+            if sum((xarray >= start) & (y < end)) < len(y) * min_sample:
+                continue
+            else:
+                print(_i, start, b)
+                tmp = y[(xarray >= start) & (y < end)]
+>>>>>>> 226c7901c6fe634e021925973c741631ae9705ac
                 groups.append((start, end))
                 counts.append(np.array((sum(tmp), len(tmp)-sum(tmp))))
             i_start = _i + 1
