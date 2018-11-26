@@ -1,6 +1,6 @@
 ## Rosaceae
 
-A python package to construct a score card.
+A python package to construct a score card, it's available in Python 2 or Python3.
 
 Install:
 ```
