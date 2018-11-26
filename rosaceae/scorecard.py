@@ -7,12 +7,12 @@ This module provides functions for credit risk scorecard.
 '''
 
 from __future__ import print_function
+import re
 import pandas as pd
 import numpy as np
 
 from math import log, e
-
-from .bins import bin_tree, bin_scatter
+from .bins import bin_tree
 
 
 # raw value transfer to woe value according woe table
@@ -65,8 +65,7 @@ def replaceWOE(woes, data):
 
 
 # information value and WOE
-def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_omit=True, 
-           verbose=False, **kwargs):
+def woe_iv(data, y, var=None, good_label=0, na_omit=True, verbose=False):
     '''Calculate feature iv value.
 
     Parameters
@@ -75,16 +74,14 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
         A data frame contians target label and features as columns.
     y : str
         Target or label column name.
-    vars : list or array like
+    var : dictionary
         A list contains column name, these columns can be viewd as  independent variables 
         or interested features. If `vars` is None, All columns are regarded as features except `y`.
     good_label : str or int
         Label for good case, default is 0.
-    dt : list or array like
-        The length is the same as the number of variables. 0 indicates numberic data, 
-        1 indicates category data. 
-    na_omit : bool
-        Whether to remove NAN value, default is True.
+    na_omit : True or False
+        Default is True. If feature binning information is provided, this `na_omit` will not work for this
+        feature. This parameter only works for features without binning infomation. 
     verbose : bool
         Print verbose information, default is False
 
@@ -101,37 +98,63 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
 
     bad_label = list(set(var_y) - set([good_label]))[0]
 
-    if vars is None:
-        vars = data.columns.tolist()
-        vars.remove(y)
-
-    if dt == None or len(dt) != len(vars):
-        raise TypeError("dt argument is a list contains 0 and 1, whose length equals variable's length.")
+    if var is None:
+        print('All columns in the input data frame will be used except `y` column.')
+        var = data.columns.tolist()
+        var.remove(y)
 
     info_df = pd.DataFrame(columns=['Variable', 'Bin', 'Good', 'Bad', 'pnt_%s'% good_label, 
                             'pnt_%s' % bad_label, 'WOE', 'IV_i'])
 
-    for idx, var in enumerate(vars):
+    for v in var:
         if verbose:
-            print("Processing on %s" % var)
+            print("Processing on %s" % v)
 
         # reset index
-        var_x = data[var].copy()
+        var_x = data[v].copy()
         var_x.reset_index(drop=True, inplace=True)
 
-        if na_omit:
+        # automatic binning, decision tree for numeric data
+        if isinstance(var, list) or (isinstance(var, dict) and not var[v]):
+            if var_x.dtype == 'object':
+                groups = var_x.dropna().unique().tolist()
+                bins_out = bin_custom(var_x, groups=groups, na_omit=na_omit)
+            else:
+                bins_out = bin_tree(var_x, var_y, na_omit=na_omit, min_samples_node= 0.01)
+       
+        elif isinstance(var, dict) and isinstance(var[v], dict):
+        # predefine bins data and corresponding index in dictonary
+            bins_out = var[v]           
+        elif isinstance(var, dict) and isinstance(var[v], list):   
+        # only bins data in a list. Category groups or numeric boundary 
+        # will store in string format in a list.
+            bins_out = {}
+            for g in var[v]:
+                if g == 'Miss':
+                    bins_out['Miss'] = np.where(pd.isna(var_x))[0]
+                elif ':' in g: # numeric boundary
+                    border = re.sub('^[\[\(]', '', g)
+                    border = re.sub('[\]\)]$', '', border)                    
+                    start, end = pd.to_numeric(border.split(':'))
+                    if g[0] == '[' and g[-1] == ']':
+                        bins_out[g] = np.where((var_x >= start) & (var_x <= end))[0]
+                    elif g[0] == '[' and g[-1] == ')':
+                        bins_out[g] = np.where((var_x >= start) & (var_x < end))[0]
+                    elif g[0] == '(' and g[-1] == ']':
+                        bins_out[g] = np.where((var_x > start) & (var_x <= end))[0]
+                    elif g[0] == '(' and g[-1] == ')':
+                        bins_out[g] = np.where((var_x > start) & (var_x < end))[0]
+                else:
+                    elements = g.split(',')
+                    bins_out[g] = np.where(var_x.isin(elements))[0]
+        
+        if 'Miss' not in bins_out:
             total_good = float(sum(var_y[~pd.isna(var_x)] == good_label))
             total_bad = len(var_y[~pd.isna(var_x)]) - total_good
-        else:
+        elif 'Miss' in bins_out:
             total_good = float(sum(var_y==good_label))
-            total_bad = data.shape[0] - total_good
-
-        if dt[idx] == 0:
-            bins_out = bin_tree(var_x, var_y, na_omit=na_omit, min_samples_node= min_samples_node, **kwargs)
-        elif dt[idx] == 1:
-            bins_out = bin_scatter(var_x, na_omit=na_omit)
-
-        #print(bins_out.keys())
+            total_bad = data.shape[0] - total_good  
+        
         if verbose:
             print("total_good: %s\ttotal_bad: %s\n" % (total_good, total_bad))
             print("Variable\tBin\tGood(%)\tBad(%)\tWOE_i\tIV_i") 
@@ -148,8 +171,8 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
 
             border_woe = log((border_bad/total_bad)/(border_good/total_good))
             iv_i = (border_bad/total_bad - border_good/total_good) * border_woe
-            row = [var,
-                    border,
+            row = [v,
+                    str(border),
                     border_good,
                     border_bad,
                     border_good/total_good , 
@@ -164,12 +187,12 @@ def woe_iv(data, y, vars=None, good_label=0, dt=None, min_samples_node=0.05, na_
     
     # reorder the info data frame by IV and bins
     reorder_idx = []
-    for v in woe_df.sort_values(by='IV', ascending=False)['Variable'].unique():
-        tmpidx = woe_df.index[woe_df['Variable']==v]
-        tmpbins = woe_df['Bin'][woe_df['Variable']==v]
+    for v in info_df.sort_values(by='IV', ascending=False)['Variable'].unique():
+        tmpidx = info_df.index[info_df['Variable']==v]
+        tmpbins = info_df['Bin'][info_df['Variable']==v]
         tmp = zip(tmpidx, tmpbins)
         if sum(tmpbins.str.contains(':')) > 0:
-            bins = sorted(tmp, key=lambda x: pd.to_numeric('inf') if x[1]=='Miss' else pd.to_numeric(x[1].split(':')[0]))
+            bins = sorted(tmp, key=lambda x: pd.to_numeric('inf') if x[1]=='Miss' else pd.to_numeric(x[1][1:-1].split(':')[0]))
         else:
             bins = tmp
         reorder_idx.extend([x[0] for x in bins])
