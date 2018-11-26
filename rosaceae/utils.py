@@ -124,8 +124,8 @@ def summary(data, verbose=False):
     StDv: Standard deviation of a sample.
     Neg: Number of negative values.
     Pos: Number of positive values.
-    OutLo: Number of outliers. Records below \code{Q25-1.5*IQR}, where \code{IQR=Q75-Q25}. 
-    OutHi: Number of outliers. Records above \code{Q75+1.5*IQR}, where \code{IQR=Q75-Q25}.
+    OutLo: Number of outliers. Records below Q25-1.5*IQR, where IQR=Q75-Q25. 
+    OutHi: Number of outliers. Records above Q75+1.5*IQR, where IQR=Q75-Q25.
     '''
     tmpdf = pd.DataFrame(columns=['Field', 'Type', 'Recs', 'Miss', 'Min', 'Q25', 'Q50', 
                                   'Avg', 'Q75', 'Max', 'StDv', 'Uniq', 'OutLo', 'OutHi'])
@@ -386,25 +386,3 @@ def frequency_table(xarray, label, steps):
         fre_df.loc[i] = row
     return fre_df
 
-
-def woe_table(feature_woe, coef, slope):
-    table = pd.DataFrame(columns=['Feature', 'Bin', 'WOE', 'Format', 'Score'])
-    for f in coef.index:
-        tmp_woe = feature_woe[f]
-        bins = tmp_woe.keys()
-        bins = sorted(bins,
-                    key=lambda x : pd.to_numeric(str(x).split(':'))[0])
-        for b in bins:
-            value = slope * coef[f] * tmp_woe[b]
-            row_idx = 0 if pd.isna(table.index.max()) else table.index.max()+1
-            
-            border = [pd.to_numeric(_i) for _i in b.split(':')]
-            if border[0] == -np.inf:
-                _format = "<;%s" % border[1]
-            elif border[1] == np.inf:
-                _format = ">=;%s" % border[0]
-            else:
-                _format = "<=and<;%s,%s" % (border[0], border[1])
-            
-            table.loc[row_idx] = [f, b, tmp_woe[b], _format, value]
-    return table
