@@ -7,7 +7,7 @@ def readme():
 
 setup(
     name='rosaceae',
-    version='0.0.7',
+    version='0.0.8',
     description='Python pacakge for credit risk scorecards',
     long_description=readme(),
     long_description_content_type='text/markdown',
@@ -16,6 +16,5 @@ setup(
     keywords=['scorecards', 'woe', 'iv'],
     url='https://github.com/l0o0/rosaceae',
     install_requires=['numpy', 'pandas', 'seaborn', 'sklearn'],
-    packages=find_packages()，
-    install_requires=['seaborn', 'sklearn', 'numpy', 'pandas', 'scipy']
+    packages=find_packages()
 )
