@@ -36,7 +36,6 @@ def bin_frequency(xarray, bins=5, na_omit=True, verbose=False):
     Dictionary
         Bin as key names. Corresponding row index as values.
     '''
-    
     xarray = xarray.copy()
     xarray.reset_index(drop=True, inplace=True)
     xarray.sort_values(inplace=True)
@@ -46,6 +45,7 @@ def bin_frequency(xarray, bins=5, na_omit=True, verbose=False):
         xarray = xarray[~pd.isna(xarray)]
     elif not na_omit and sum(pd.isna(xarray)) > 0:
         out['Miss'] = np.where(pd.isna(xarray))[0]
+        xarray = xarray[~pd.isna(xarray)] 
 
     step = int(len(xarray) / bins)
     if verbose:
@@ -83,7 +83,7 @@ def bin_distance(xarray, bins=5, na_omit=True, verbose=False):
         Bin as key names. Corresponding row index as values.
     '''
     distance = (max(xarray) - min(xarray)) / bins
-
+    out = {}
     xarray = xarray.copy()
     xarray.reset_index(drop=True, inplace=True)
 
@@ -94,7 +94,7 @@ def bin_distance(xarray, bins=5, na_omit=True, verbose=False):
         out['Miss'] = np.where(pd.isna(xarray))[0]
 
     MIN = min(xarray)
-    out = {}
+
     for i in range(bins):
         if i ==0:
             left = -np.inf
@@ -345,8 +345,7 @@ def bin_custom(xarray, groups, na_omit=True, verbose=False):
         if len(tmp) > 0:
             out['Miss'] = np.where(pd.isna(xarray))[0]
 
-    if ':' in groups[0]:    # numeric custom
-
+    if isinstance(groups[0], str) and ':' in groups[0]:    # numeric custom
         for g in groups:
             if verbose:
                 print('* Handling %s' % g)
@@ -366,8 +365,7 @@ def bin_custom(xarray, groups, na_omit=True, verbose=False):
             if isinstance(g, str):
                 g = (g,)
             if 'Miss' in g:
-                out[g] = np.where((xarray.isin(list(g))) | (pd.isna(xarray)))[0]
-                del out['Miss']
+                out['Miss'] = np.where((xarray.isin(list(g))) | (pd.isna(xarray)))[0]
             else:
                 out[g] = np.where(xarray.isin(list(g)))[0]
     
