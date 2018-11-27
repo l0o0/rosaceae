@@ -122,8 +122,7 @@ def summary(data, verbose=False):
     Q75: Third quartile. It splits off the lowest 75\% of data from the highest 25\%.
     Max: Maximum value.
     StDv: Standard deviation of a sample.
-    Neg: Number of negative values.
-    Pos: Number of positive values.
+    Uniq: Unique value.
     OutLo: Number of outliers. Records below Q25-1.5*IQR, where IQR=Q75-Q25. 
     OutHi: Number of outliers. Records above Q75+1.5*IQR, where IQR=Q75-Q25.
     '''

@@ -54,12 +54,12 @@ def replaceWOE(woes, data):
         var_woe = woes[var]
         for border in var_woe:
             if isinstance(border, str) and ':' in border:
-                start, end = pd.to_numeric(border.split(':'))
+                start, end = pd.to_numeric(border[1:-1].split(':'))
                 flags = ((woe_data[var]>= start) & (woe_data[var]<end))
             elif border == 'Miss':
                 flags = pd.isna(woe_data[var])
             else:
-                flags = woe_data[var] == border
+                flags = woe_data[var].isin(border.split(','))
             woe_data.loc[flags, var] = var_woe[border][0]
     return woe_data
 
