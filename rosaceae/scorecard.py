@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 
 from math import log, e
-from .bins import bin_tree
+from .bins import bin_tree, bin_custom
 
 
 # raw value transfer to woe value according woe table
