@@ -299,11 +299,11 @@ def bin_chi2(xarray, y, bins, min_sample=0.01, na_omit=True, verbose=False):
         # reformat numeric groups
         for _i, g in enumerate(groups):
             if np.isinf(g[0]):
-                g[_i] = '(-inf:%s]' % g[1]
+                groups[_i] = '(-inf:%s]' % g[1]
             elif np.isinf(g[1]):
-                g[_i] = '(%s:inf)' % g[0]
+                groups[_i] = '(%s:inf)' % g[0]
             else:
-                g[_i] = '(%s:%s]' % (g[0], g[1])
+                groups[_i] = '(%s:%s]' % (g[0], g[1])
 
     return groups
 
