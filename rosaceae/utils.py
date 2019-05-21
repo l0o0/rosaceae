@@ -62,7 +62,7 @@ def model_selector(x_train, x_test, y_train, y_test, start=1, end=None, thresh=N
             if thresh and test_roc_score < thresh:
                 continue
 
-            row = 0 if pd.isna(result_df.index.max()) else result_df.index.max() + 1
+            row = 0 if pd.isnull(result_df.index.max()) else result_df.index.max() + 1
             result_df.loc[row] = [n, ','.join(t), train_roc_score, test_roc_score, clf.coef_[0], clf.intercept_[0]]
 
     return result_df
@@ -88,7 +88,7 @@ def model_selector2(x, y, start=1, end=None, verbose=False):
             if verbose:
                 print("%s\t%s\t%s\t%s" % (n, ','.join(t), scores.mean(), scores.std()))
 
-            #row = 0 if pd.isna(result_df.index.max()) else result_df.index.max() + 1
+            #row = 0 if pd.isnull(result_df.index.max()) else result_df.index.max() + 1
             result_df.loc[result_df.shape[0]] = [n, ','.join(t), scores.mean(), scores.std()]
 
     return result_df
@@ -131,7 +131,7 @@ def summary(data, verbose=False):
     for i,col in enumerate(data.columns):
         datatype = str(data[col].dtype)
         recs = len(data[col])
-        miss = sum(pd.isna(data[col]))
+        miss = sum(pd.isnull(data[col]))
         uniq = len(data[col].unique())
         if verbose:
             print(col)
